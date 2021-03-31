@@ -1,5 +1,7 @@
 package edu.northeastern.assignment3_server;
 
+import edu.northeastern.assignment3_server.model.Purchase;
+import edu.northeastern.assignment3_server.model.PurchaseItems;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
