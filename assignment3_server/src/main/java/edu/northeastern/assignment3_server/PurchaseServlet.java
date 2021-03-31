@@ -21,6 +21,8 @@ public class PurchaseServlet extends HttpServlet {
   private static final int MAX_INT_DIGIT = 10;
   private static final String RESPONSE_400 = "Invalid inputs";
   private static final String RESPONSE_404 = "Data not found";
+  private static final String RESPONSE_INVALID_INPUTS = "Invalid inputs";
+  private static final String RESPONSE_DATA_NOT_FOUND = "Data not found";
   private static final String RESPONSE_MISSING_PARAMETERS = "Missing parameters";
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String URL_SPLIT_PATTERN = "/";
@@ -41,8 +43,8 @@ public class PurchaseServlet extends HttpServlet {
     ResponseMsg message = new ResponseMsg();
 
     if (urlPath == null || urlPath.isEmpty()) {
-      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      message.setMessage(RESPONSE_MISSING_PARAMETERS);
+      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      message.setMessage(RESPONSE_INVALID_INPUTS);
       String errorMessage = gson.toJson(message);
       response.getWriter().write(errorMessage);
       return;
@@ -51,8 +53,8 @@ public class PurchaseServlet extends HttpServlet {
     String[] urlParts = urlPath.split(URL_SPLIT_PATTERN);
 
     if (!isUrlValid(urlParts)) {
-      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      message.setMessage(RESPONSE_400);
+      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+      message.setMessage(RESPONSE_DATA_NOT_FOUND);
       String errorMessage = gson.toJson(message);
       response.getWriter().write(errorMessage);
     } else {
