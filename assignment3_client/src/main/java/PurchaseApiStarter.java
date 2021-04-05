@@ -114,7 +114,7 @@ public class PurchaseApiStarter {
 
     // Write results to CSV file
     String fileName = OUTPUT_FILE_NAME + maxStores;
-    OutputProcessor.writeToCsv(recordLines, Arrays.asList(HEADERS), fileName);
-    System.out.println(RESULT_WRITING + fileName);
+    // OutputProcessor.writeToCsv(recordLines, Arrays.asList(HEADERS), fileName);
+    // System.out.println(RESULT_WRITING + fileName);
   }
 }

@@ -6,7 +6,7 @@ import java.util.Scanner;
  */
 public class CommandLineProcessor {
 
-  private static final String BASE_URL = "http://localhost:8080";
+  private static final String BASE_URL = "http://34.204.185.63:8080";
   private static final int MAX_INT_DIGIT = 10;
   private static final int MIN_NUM_ITEMS_PER_PURCHASE = 1;
   private static final int MAX_NUM_ITEMS_PER_PURCHASE = 20;
