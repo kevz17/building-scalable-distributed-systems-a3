@@ -7,9 +7,25 @@
     <servlet-name>StoreServlet</servlet-name>
     <servlet-class>edu.northeastern.assignment3_store_microservice.StoreServlet</servlet-class>
   </servlet>
+  <servlet>
+    <servlet-name>StoreCheckerServlet</servlet-name>
+    <servlet-class>edu.northeastern.assignment3_store_microservice.StoreCheckerServlet</servlet-class>
+  </servlet>
+  <servlet>
+    <servlet-name>RestartDataServlet</servlet-name>
+    <servlet-class>edu.northeastern.assignment3_store_microservice.RestartDataServlet</servlet-class>
+  </servlet>
 
   <servlet-mapping>
     <servlet-name>StoreServlet</servlet-name>
     <url-pattern>/items/*</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>StoreCheckerServlet</servlet-name>
+    <url-pattern>/size</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>RestartDataServlet</servlet-name>
+    <url-pattern>/restart</url-pattern>
   </servlet-mapping>
 </web-app>

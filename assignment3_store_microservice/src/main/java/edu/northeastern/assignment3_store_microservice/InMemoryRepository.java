@@ -30,6 +30,16 @@ public class InMemoryRepository {
     return this.itemIDMap;
   }
 
+  public void setStoreIDMap(
+      ConcurrentHashMap<Integer, ConcurrentHashMap<Long, Long>> storeIDMap) {
+    this.storeIDMap = storeIDMap;
+  }
+
+  public void setItemIDMap(
+      ConcurrentHashMap<Long, ConcurrentHashMap<Long, Long>> itemIDMap) {
+    this.itemIDMap = itemIDMap;
+  }
+
   public void addPurchaseToStoreIDMap(List<PurchaseItems> items, int storeID) {
     for (PurchaseItems purchaseItems : items) {
       long itemID = Long.parseLong(purchaseItems.getItemID());

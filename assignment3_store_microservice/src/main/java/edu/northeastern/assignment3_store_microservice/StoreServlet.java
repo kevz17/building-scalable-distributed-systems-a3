@@ -1,15 +1,26 @@
 package edu.northeastern.assignment3_store_microservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.northeastern.assignment3_store_microservice.model.ResponseMsg;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
+import edu.northeastern.assignment3_store_microservice.model.PurchaseItems;
 import edu.northeastern.assignment3_store_microservice.model.TopItems;
 import edu.northeastern.assignment3_store_microservice.model.TopItemsStores;
 import edu.northeastern.assignment3_store_microservice.model.TopStores;
 import edu.northeastern.assignment3_store_microservice.model.TopStoresStores;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 import javax.servlet.http.*;
 import java.io.IOException;
 
@@ -18,56 +29,113 @@ import java.io.IOException;
  */
 public class StoreServlet extends HttpServlet {
 
-  private static final String RESPONSE_INVALID_INPUTS = "Invalid inputs";
-  private static final String RESPONSE_DATA_NOT_FOUND = "Data not found";
+  private static final String EXCHANGE_NAME = "purchase_records";
+  private static final String RABBITMQ_USERNAME = "admin";
+  private static final String RABBITMQ_PASSWORD = "admin";
+  private static final String RABBITMQ_HOST_URL = "100.26.182.92";
+  private static final int RABBITMQ_PORT = 5672;
+  private static final String DELIMITER = " ";
+  private static final int THREAD_POOL_SIZE = 32;
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String URL_SPLIT_PATTERN = "/";
+  private static final String QUEUE_NAME = "store_queue";
   private ObjectMapper objectMapper = new ObjectMapper();
+
+  @Override
+  public void init() {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUsername(RABBITMQ_USERNAME);
+    factory.setPassword(RABBITMQ_PASSWORD);
+    factory.setHost(RABBITMQ_HOST_URL);
+    factory.setPort(RABBITMQ_PORT);
+    Connection connection = null;
+    try {
+      connection = factory.newConnection();
+    } catch (IOException | TimeoutException e) {
+      e.printStackTrace();
+    }
+
+    Connection finalConnection = connection;
+    Runnable storeConsumer = () -> {
+      try {
+        Channel channel = finalConnection.createChannel();
+
+        channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
+        channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+        channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, "");
+        channel.basicQos(1);
+
+        DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+          String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+
+          try {
+            storeToInMemoryRepository(message);
+          } finally {
+            channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+          }
+        };
+
+        channel.basicConsume(QUEUE_NAME, false, deliverCallback, consumerTag -> {
+        });
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    };
+
+    ExecutorService consumerPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+    for (int i = 0; i < THREAD_POOL_SIZE; i++) {
+      consumerPool.execute(storeConsumer);
+    }
+  }
+
+  private static void storeToInMemoryRepository(String message) throws JsonProcessingException {
+    // Deserialize message
+    String[] messageParts = message.split(DELIMITER);
+    String jsonString = messageParts[0];
+    int storeID = Integer.parseInt(messageParts[1]);
+
+    // Convert JSON string to Purchase object
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode jsonNode = mapper.readTree(jsonString);
+    JsonNode itemsNode = jsonNode.get("items");
+    List<PurchaseItems> items = mapper
+        .convertValue(itemsNode, new TypeReference<List<PurchaseItems>>() {
+        });
+
+    // Store in data storage
+    InMemoryRepository.getInstance().addPurchaseToStoreIDMap(items, storeID);
+    InMemoryRepository.getInstance().addPurchaseToItemIDMap(items, storeID);
+  }
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
 
+    // URL checking is ignored since already processed by server before forwarding
     response.setContentType(CONTENT_TYPE_JSON);
     String urlPath = request.getPathInfo();
-    ResponseMsg message = new ResponseMsg();
-
-    if (urlPath == null || urlPath.isEmpty()) {
-      message.setMessage(RESPONSE_INVALID_INPUTS);
-      String errorMessage = objectMapper.writeValueAsString(message);
-      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      response.getWriter().write(errorMessage);
-      return;
-    }
-
     String[] urlParts = urlPath.split(URL_SPLIT_PATTERN);
 
-    if (!Utility.isUrlForItems(urlParts) && !Utility.isUrlForStores(urlParts)) {
-      message.setMessage(RESPONSE_DATA_NOT_FOUND);
-      String errorMessage = objectMapper.writeValueAsString(message);
-      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      response.getWriter().write(errorMessage);
-    } else {
-      // Extract url params
-      boolean isGetTopItems = Utility.isUrlForItems(urlParts);
-      long id = Long.parseLong(urlParts[2]);
+    // Extract url params
+    boolean isGetTopItems = Utility.isUrlForItems(urlParts);
+    long id = Long.parseLong(urlParts[2]);
 
-      // Process request
-      response.setStatus(HttpServletResponse.SC_OK);
-      if (isGetTopItems) {
-        TopItems topItems = new TopItems();
-        List<TopItemsStores> data = getTop10Items(id);
-        topItems.setStores(data);
-        String responseTopItems = objectMapper.writeValueAsString(topItems);
-        response.getWriter().write(responseTopItems);
-      } else {
-        TopStores topStores = new TopStores();
-        List<TopStoresStores> data = getTop5Stores(id);
-        topStores.setStores(data);
-        String responseTopStores = objectMapper.writeValueAsString(topStores);
-        response.getWriter().write(responseTopStores);
-      }
+    // Process request
+    response.setStatus(HttpServletResponse.SC_OK);
+    if (isGetTopItems) {
+      TopItems topItems = new TopItems();
+      List<TopItemsStores> data = getTop10Items(id);
+      topItems.setStores(data);
+      String responseTopItems = objectMapper.writeValueAsString(topItems);
+      response.getWriter().write(responseTopItems);
+    } else {
+      TopStores topStores = new TopStores();
+      List<TopStoresStores> data = getTop5Stores(id);
+      topStores.setStores(data);
+      String responseTopStores = objectMapper.writeValueAsString(topStores);
+      response.getWriter().write(responseTopStores);
     }
+
   }
 
   private List<TopItemsStores> getTop10Items(long storeID) {
