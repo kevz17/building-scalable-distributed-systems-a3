@@ -17,9 +17,9 @@ import model.PurchaseItems;
 public class PostPurchaseConsumer {
 
   private static final String EXCHANGE_NAME = "purchase_records";
-    private static final String RABBITMQ_USERNAME = System.getProperty("RABBITMQ_USERNAME");
-    private static final String RABBITMQ_PASSWORD = System.getProperty("RABBITMQ_PASSWORD");
-    private static final String RABBITMQ_HOST_URL = System.getProperty("RABBITMQ_URL");
+  private static final String RABBITMQ_USERNAME = System.getProperty("RABBITMQ_USERNAME");
+  private static final String RABBITMQ_PASSWORD = System.getProperty("RABBITMQ_PASSWORD");
+  private static final String RABBITMQ_HOST_URL = System.getProperty("RABBITMQ_URL");
   private static final int RABBITMQ_PORT = 5672;
   private static final String DELIMITER = " ";
   private static final int THREAD_POOL_SIZE = 32;
