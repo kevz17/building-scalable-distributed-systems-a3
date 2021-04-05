@@ -17,14 +17,21 @@ import model.PurchaseItems;
 public class PostPurchaseConsumer {
 
   private static final String EXCHANGE_NAME = "purchase_records";
-  private static final String RABBITMQ_HOST_URL = "http://192.168.0.1";
-  private static final String DELIMITER = "/?";
-  private static final int THREAD_POOL_SIZE = 4;
+    private static final String RABBITMQ_USERNAME = System.getProperty("RABBITMQ_USERNAME");
+    private static final String RABBITMQ_PASSWORD = System.getProperty("RABBITMQ_PASSWORD");
+    private static final String RABBITMQ_HOST_URL = System.getProperty("RABBITMQ_URL");
+  private static final int RABBITMQ_PORT = 5672;
+  private static final String DELIMITER = " ";
+  private static final int THREAD_POOL_SIZE = 32;
+  private static final String QUEUE_NAME = "purchase_queue";
   private static ObjectMapper objectMapper = new ObjectMapper();
 
   public static void main(String[] argv) throws Exception {
     ConnectionFactory factory = new ConnectionFactory();
+    factory.setUsername(RABBITMQ_USERNAME);
+    factory.setPassword(RABBITMQ_PASSWORD);
     factory.setHost(RABBITMQ_HOST_URL);
+    factory.setPort(RABBITMQ_PORT);
     Connection connection = factory.newConnection();
 
     Runnable storeConsumer = () -> {
@@ -32,8 +39,8 @@ public class PostPurchaseConsumer {
         Channel channel = connection.createChannel();
 
         channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
-        String queueName = channel.queueDeclare().getQueue();
-        channel.queueBind(queueName, EXCHANGE_NAME, "");
+        channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+        channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, "");
         channel.basicQos(1);
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
@@ -45,7 +52,7 @@ public class PostPurchaseConsumer {
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
           }
         };
-        channel.basicConsume(queueName, false, deliverCallback, consumerTag -> {
+        channel.basicConsume(QUEUE_NAME, false, deliverCallback, consumerTag -> {
         });
       } catch (IOException e) {
         e.printStackTrace();
@@ -53,7 +60,9 @@ public class PostPurchaseConsumer {
     };
 
     ExecutorService consumerPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-    consumerPool.execute(storeConsumer);
+    for (int i = 0; i < THREAD_POOL_SIZE; i++) {
+      consumerPool.execute(storeConsumer);
+    }
   }
 
   private static void storeToDatabase(String message) throws JsonProcessingException {
@@ -68,7 +77,7 @@ public class PostPurchaseConsumer {
     JsonNode jsonNode = objectMapper.readTree(jsonString);
     JsonNode itemsNode = jsonNode.get("items");
     List<PurchaseItems> items = objectMapper
-        .convertValue(itemsNode, new TypeReference<List<PurchaseItems>>() {
+        .convertValue(itemsNode, new TypeReference<>() {
         });
 
     // Connect to DB and insert record

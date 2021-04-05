@@ -10,11 +10,11 @@ public class DataSource {
 
   private static HikariConfig config = new HikariConfig();
   private static HikariDataSource dataSource;
-  private static final String HOST_NAME = System.getProperty("MYSQL_IP_ADDRESS");
-  private static final String PORT = System.getProperty("MYSQL_PORT");
   private static final String DATABASE = "GiantTigle";
-  private static final String USERNAME = System.getProperty("DB_USERNAME");
-  private static final String PASSWORD = System.getProperty("DB_PASSWORD");
+    private static final String HOST_NAME = System.getProperty("MYSQL_IP_ADDRESS");
+    private static final String PORT = System.getProperty("MYSQL_PORT");
+    private static final String USERNAME = System.getProperty("DB_USERNAME");
+    private static final String PASSWORD = System.getProperty("DB_PASSWORD");
 
   static {
     try {
@@ -23,7 +23,8 @@ public class DataSource {
       e.printStackTrace();
     }
 
-    String url = String.format("jdbc:mysql://%s:%s/%s?serverTimezone=UTC", HOST_NAME, PORT, DATABASE);
+    String url = String
+        .format("jdbc:mysql://%s:%s/%s?serverTimezone=UTC", HOST_NAME, PORT, DATABASE);
     config.setJdbcUrl(url);
     config.setUsername(USERNAME);
     config.setPassword(PASSWORD);
