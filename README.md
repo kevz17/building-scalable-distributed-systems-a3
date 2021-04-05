@@ -2,6 +2,8 @@
 
 ## System Design
 
+![alt text](https://drive.google.com/file/d/1hJVgfc65oM5fpukHzgZZDUtIhCMKiVIn/view?usp=sharing)
+
 As the diagram above shows, the client first sends purchase requests to the servlet, then the servlet publishes requests to the RabbitMQ for asynchronous processing, directing requests to store and purchase microservices to consume. The store microservice stores purchase records in memory, while the purchase microservice stores these records into MySQL database hosted on RDS. The AWS configuration of each part is shown below:
 
 |  | Client | Upgraded Client | Server | RabbitMQ | Purchase Microservice | Store Microservice | Upgraded Store Microservice | Database |
