@@ -2,7 +2,7 @@
 
 ## System Design
 
-![alt text](https://drive.google.com/file/d/1hJVgfc65oM5fpukHzgZZDUtIhCMKiVIn/view?usp=sharing)
+![alt text](https://github.com/kevz17/building-scalable-distributed-systems-a3/blob/main/a3_system_design.png?raw=true)
 
 As the diagram above shows, the client first sends purchase requests to the servlet, then the servlet publishes requests to the RabbitMQ for asynchronous processing, directing requests to store and purchase microservices to consume. The store microservice stores purchase records in memory, while the purchase microservice stores these records into MySQL database hosted on RDS. The AWS configuration of each part is shown below:
 
