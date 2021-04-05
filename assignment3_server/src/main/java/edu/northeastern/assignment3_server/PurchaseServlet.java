@@ -1,15 +1,15 @@
 package edu.northeastern.assignment3_server;
 
 import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.northeastern.assignment3_server.model.ResponseMsg;
 import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeoutException;
 import javax.servlet.http.*;
 import java.io.IOException;
+import org.apache.commons.pool2.ObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
 /**
  * This PurchaseServlet class serves as a servlet for HTTP POST request, the implementation of GET
@@ -22,26 +22,23 @@ public class PurchaseServlet extends HttpServlet {
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String URL_SPLIT_PATTERN = "/";
   private static final String EXCHANGE_NAME = "purchase_records";
-  private static final String DELIMITER = "?";
-  private static final String RABBITMQ_HOST_URL = "http://192.168.0.1";
+  private static final String DELIMITER = " ";
   private ObjectMapper objectMapper = new ObjectMapper();
-  private Connection connection;
+  private ObjectPool<Channel> channelPool;
 
   @Override
   public void init() {
-    ConnectionFactory factory = new ConnectionFactory();
-    factory.setHost(RABBITMQ_HOST_URL);
-    try {
-      connection = factory.newConnection();
-    } catch (IOException | TimeoutException e) {
-      e.printStackTrace();
-    }
+    // Create a channel pool
+    GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+    config.setMinIdle(2);
+    config.setMaxIdle(5);
+    config.setMaxTotal(20);
+    channelPool = new GenericObjectPool<>(new ChannelFactory());
   }
 
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-
     response.setContentType(CONTENT_TYPE_JSON);
     String urlPath = request.getPathInfo();
     ResponseMsg responseMsg = new ResponseMsg();
@@ -79,11 +76,24 @@ public class PurchaseServlet extends HttpServlet {
       // Incorporate storeID, custID, and date into JSON string as message
       String message = jsonString + (DELIMITER + storeID + DELIMITER + custID + DELIMITER + date);
 
-      try (Channel channel = connection.createChannel()) {
+      // Publish request as message to RabbitMQ
+      Channel channel = null;
+      try {
+        channel = channelPool.borrowObject();
         channel.exchangeDeclare(EXCHANGE_NAME, "fanout");
         channel.basicPublish(EXCHANGE_NAME, "", null, message.getBytes(StandardCharsets.UTF_8));
-      } catch (TimeoutException e) {
-        e.printStackTrace();
+      } catch (IOException e) {
+        throw e;
+      } catch (Exception e) {
+        throw new RuntimeException("Unable to borrow channel from pool" + e.toString());
+      } finally {
+        try {
+          if (null != channel) {
+            channelPool.returnObject(channel);
+          }
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
 
       response.setStatus(HttpServletResponse.SC_CREATED);

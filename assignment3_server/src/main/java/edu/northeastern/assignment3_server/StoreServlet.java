@@ -13,7 +13,7 @@ public class StoreServlet extends HttpServlet {
   private static final String RESPONSE_DATA_NOT_FOUND = "Data not found";
   private static final String CONTENT_TYPE_JSON = "application/json";
   private static final String URL_SPLIT_PATTERN = "/";
-  private static final String STORE_MICROSERVICE_URL = "http://192.168.0.1";
+  private static final String STORE_MICROSERVICE_URL = System.getProperty("STORE_MICROSERVICE_URL");
   private static final String TOP_ITEMS_URL = "/items/store/";
   private static final String TOP_STORES_URL = "/items/top10/";
   private ObjectMapper objectMapper = new ObjectMapper();
